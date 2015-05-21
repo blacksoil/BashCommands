@@ -1,0 +1,514 @@
+#!/bin/bash
+VERSION=4
+trap ctrl_c SIGINT
+
+helper(){
+    echo "rsync version $VERSION"
+    echo "Tool for syncing the data between build server"
+    echo "  Syntax:- "
+    echo ""
+    echo "      myrsync [option] [argument]"
+    echo ""
+    echo "  Option:-     "
+    echo ""
+    echo "         -f    Forcefully update the tree. When pushing the files to server,
+               push the whole tree including out. When pulling from server
+               pull whole tree instead of just out folder"
+    echo "         -d    Full pull, Downloads complete out folder ( very slow )."
+    echo "         -y    Partial pull (see above) and pull \$OUT/symbols"
+    echo "         -s    Disable sync/download from server.Ignores --sym and -p options."
+    echo "         -l    Disable sync/upload to server"
+    echo "         -n    File no delete option.By default rsync delete files on local machine,
+                which are removed on server during build.This option disables that feature."
+    echo "         -h    Show this help and exit"
+    echo ""
+    echo "  Argument:-     "
+    echo ""
+    echo "  push:- Send \$TOP to server.
+         Excluding following folders out, _out, .git and .repo,when -f is used
+         out and _out will be pushed to server."
+    echo ""
+    echo "  pull:- Fetch out folder from server.
+         All other folders are excluded, when -f is used whole tree
+         is downloaded from server."
+    echo ""
+    echo "  build:- Send Tree to server ,Build and Pull out folder from server.
+         Uses current shell variables to start build on server. Arguments passed
+         after build will be appended to \"mp\" command."
+    echo ""
+    echo "      Example:-
+                All commands below will run push before executing and
+                pull after executing command.
+
+                    myrysnc build => Will trigger mp on server
+                    myrsync build bootloader => Will trigger mp bootloader on server
+                    myrsync build mkbootimage => Will trigger mp mkbootimage on server"
+    echo ""
+    echo "  buildclean :- Send Tree to server ,Kick off Build and Pull out folder from server.
+               Uses current shell variables to start build on server."
+    echo ""
+    echo "  cmd:- Send Tree to server ,Run command and Fetch out folder from server.
+         Uses current shell variables to run command on server."
+    echo "  mmp:- Send current direcoty to server ,Run mmp command and Fetch out folder from server.
+         Uses current shell variables to run command on server."
+    echo ""
+    echo "  update:- Check for latest version of myrsync "
+    echo "      Example:-
+                All commands below will run push before executing and
+                pull after executing command.
+
+                    myrysnc cmd krebuild => Will trigger krebuild on server
+                    myrsync cmd mp nvidia-tests => Will trigger mp nvidia-tests on server
+                    ( same as running myrsync build nvidia-tests )"
+    echo ""
+    echo "  Requirements:-"
+    echo "      TOP, USER, SERVER_ADDR and SERVER_PATH variables are defined."
+    echo ""
+    echo "  Refer to following wiki for more details"
+    echo "  https://wiki.nvidia.com/wmpwiki/index.php/Software/General/Android_SW_Platform_Team/APT_SC_build_server "
+
+}
+
+# Outputs a string to be used as a command line on server to setup environment
+cmdline_base_setenv ()
+{
+    cat <<-EOF
+    . ~/.profile;
+    cd $SERVER_PATH/$(basename "$TOP");
+    export TOP=\$(pwd);
+    echo TOP=\$TOP;
+    echo P4ROOT=\$P4ROOT;
+    [ -n "$PDK_FUSION_PLATFORM_ZIP" ] && {
+        export PDK_FUSION_PLATFORM_ZIP="$PDK_FUSION_PLATFORM_ZIP";
+        echo export PDK_FUSION_PLATFORM_ZIP="$PDK_FUSION_PLATFORM_ZIP";
+    };
+    [ -n "$SECURE_OS_BUILD" ] && {
+        export SECURE_OS_BUILD="$SECURE_OS_BUILD";
+        echo export SECURE_OS_BUILD="$SECURE_OS_BUILD";
+    };
+    [ -n "$EXPERIMENTAL_USE_JAVA7" ] && {
+        export EXPERIMENTAL_USE_JAVA7="$EXPERIMENTAL_USE_JAVA7";
+        echo export EXPERIMENTAL_USE_JAVA7="$EXPERIMENTAL_USE_JAVA7";
+    };
+    [ -n "$MALLOC_IMPL" ] && {
+        export MALLOC_IMPL="$MALLOC_IMPL";
+        echo export MALLOC_IMPL="$MALLOC_IMPL";
+    };
+    . build/envsetup.sh;
+    setpaths;
+    choosecombo $TARGET_BUILD_TYPE $TARGET_PRODUCT $TARGET_BUILD_VARIANT;
+    export USE_CCACHE=1;
+    export CCACHE_BASEDIR=\$HOME;
+    \$TOP/prebuilts/misc/linux-x86/ccache/ccache -M 50G;
+    cd $SERVER_PATH/$(basename "$TOP")/$MM_PATH;
+    echo ""
+EOF
+}
+
+update_check(){
+    today=`date +%Y%m%d`
+    if [ ! -d /tmp/"mRc"$today* ] ;then
+        rm -rf /tmp/mRc*
+        echo "Updating myrsync"
+        local TEMP_MY_RSYNC="`mktemp -qd "mRc"$today"XXX" --tmpdir=/tmp`"
+        cd $TEMP_MY_RSYNC
+        git clone -qn git://git-mirror:9418/tegra/tools/apt-private --depth 1 -b master ; cd apt-private ; git checkout HEAD scripts/myrsync ; cd -
+        cmp --silent $TEMP_MY_RSYNC/apt-private/scripts/myrsync `which myrsync`
+        R=$?
+        if [ $R -eq 1 ]; then
+            echo -e "\e[93mNew version of myrsync is available. Updating"
+            sleep 1
+            cp $TEMP_MY_RSYNC/apt-private/scripts/myrsync `which myrsync`
+            echo "Updating complete. Please run your command again"
+            track
+        fi
+        echo "No updates found."
+    fi
+}
+
+force_update(){
+    rm -rf /tmp/mRc*
+    update_check;
+}
+
+quotacheck(){
+    quota=`ssh $SERVER_ADDR quota -q`
+    if [ "$quota" ]; then
+        echo  -e "\e[31m!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+        echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+        echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+        echo "Your Disk Quota on server exceeded . Please delete data on server."
+        echo "Your builds will start failing due to this"
+        echo "Run Following commands and delete unwanted codelines,"
+        echo "  ssh $SERVER_ADDR"
+        echo "  cd $SERVER_PATH"
+        echo "  rm -rf <unwanted codelines>"
+        ssh $SERVER_ADDR quota -s
+        echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+        echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+        echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! \e[0m"
+        sleep 5
+    fi
+}
+
+data_calc(){
+        cat /tmp/myrsync.data | gawk '{print $(NF-5)}' | awk '{
+            ex = index("KMG", substr($1, length($1)))
+            val = substr($1, 0, length($1) - 1)
+            prod = val * 10^(ex * 3)
+            sum += prod
+            } END {print sum / ( 1000 ^ 3 )}'
+}
+
+mmp(){
+        local RET
+        local current_dir=`basename $PWD`
+        MM_PATH=`echo $PWD | /bin/grep -o -P "(?<=$TOP).*(?=$current_dir)"`
+        MM_PATH=`echo $MM_PATH/$current_dir`
+        PUSH_START=$(date +%s.%N)
+        rsync_cmd="rsync $NORMAL_PARAM_PUSH $NORMAL_PUSH_EXCLUDE --exclude=.git --exclude=.repo --delete $PWD/ $SERVER_ADDR:$SERVER_PATH/$TW/$MM_PATH/ | tee -a $MTEMP"
+        #echo $rsync_cmd
+        LOC_SYNC=false;
+        eval $rsync_cmd
+        RET=$?
+        PUSH_END=$(date +%s.%N)
+        PUSH_TIME=$(echo "$PUSH_END - $PUSH_START" | bc)
+        PUSH_TIME=$(printf '%.2f' $PUSH_TIME)
+        PUSH_DATA=$(data_calc)
+        PUSH_DATA=$(printf '%.2f' $PUSH_DATA)
+        #echo "PUSH DATA $PUSH_DATA GB, PUSH TIME $PUSH_TIME"
+        >$MTEMP
+        if [ $RET -eq 0 ] ; then
+            cmd "mmp" $@
+        fi
+}
+
+push(){
+        PUSH_START=$(date +%s.%N)
+        echo "Pushing Full Tree to Server"
+        ssh $SERVER_ADDR "mkdir -p $SERVER_PATH/$TW"
+        rsync $NORMAL_PARAM_PUSH --info=progress2 $NORMAL_PUSH_EXCLUDE --exclude=".git" --exclude=".repo" --delete $TOP/ $SERVER_ADDR:$SERVER_PATH/$TW/| tee -a $MTEMP
+        if [ -d  "$TOP/external/chromium_org/third_party/angle" ];then
+            echo "Pushing /external/chromium_org/third_party/angle/ to Server"
+            rsync $NORMAL_PARAM_PUSH $NORMAL_PUSH_EXCLUDE  --delete $TOP/external/chromium_org/third_party/angle/ $SERVER_ADDR:$SERVER_PATH/$TW/external/chromium_org/third_party/angle/| tee -a $MTEMP
+        fi
+        DEVICE=`basename $OUT`
+        if [ $TARGET_BUILD_TYPE == "debug" ];then
+                NORMAL_CONFIG_PATH="out/debug/target/product/$DEVICE/obj/KERNEL"
+        else
+                NORMAL_CONFIG_PATH="out/target/product/$DEVICE/obj/KERNEL"
+        fi
+
+        if [ -f $TOP/$NORMAL_CONFIG_PATH/.config ]; then
+            echo "Pushing .config file to Server"
+            ssh $SERVER_ADDR "mkdir -p $SERVER_PATH/$TW/$NORMAL_CONFIG_PATH"
+            rsync $NORMAL_PARAM_PUSH --info=progress2 --delete $TOP/$NORMAL_CONFIG_PATH/.config $SERVER_ADDR:$SERVER_PATH/$TW/$NORMAL_CONFIG_PATH/.config| tee -a $MTEMP
+        fi
+        PUSH_END=$(date +%s.%N)
+        PUSH_TIME=$(echo "$PUSH_END - $PUSH_START" | bc)
+        PUSH_TIME=$(printf '%.2f' $PUSH_TIME)
+        PUSH_DATA=$(data_calc)
+        PUSH_DATA=$(printf '%.2f' $PUSH_DATA)
+        #echo "PUSH DATA $PUSH_DATA GB, PUSH TIME $PUSH_TIME"
+        >$MTEMP
+}
+
+pull(){
+        PULL_START=$(date +%s.%N)
+        if [ $PARTIAL_PULL == false ];then
+            echo "Downloading $SERVER_ADDR:$SERVER_PATH/$TW/$NORMAL_PULL_PATH folder from Server "
+            rsync $NORMAL_PARAM_PULL --info=progress2 $NORMAL_DELETE $SERVER_ADDR:$SERVER_PATH/$TW/$NORMAL_PULL_PATH $TOP/$NORMAL_PULL_PATH | tee -a $MTEMP
+            rsync $NORMAL_PARAM_PULL --info=progress2 --include="_out" --exclude="*"  --delete $SERVER_ADDR:$SERVER_PATH/$TW $TOP | tee -a $MTEMP
+        else
+            echo "**** Partial Pull from Server ****"
+            DEVICE=`basename $OUT`
+            if [ $TARGET_BUILD_TYPE == "debug" ];then
+                NORMAL_PULL_PATH="out/debug/target/product/$DEVICE/"
+            else
+                NORMAL_PULL_PATH="out/target/product/$DEVICE/"
+            fi
+            if [ ! -d $TOP/$NORMAL_PULL_PATH ]; then
+                mkdir -p $TOP/$NORMAL_PULL_PATH
+            fi
+            echo "Downloading $SERVER_ADDR:$SERVER_PATH/$TW/$NORMAL_PULL_PATH folder from Server "
+            rsync $NORMAL_PARAM_PULL --info=progress2 --exclude="/gen" --exclude="/symbols"  --exclude="/obj*"  $NORMAL_DELETE $SERVER_ADDR:$SERVER_PATH/$TW/$NORMAL_PULL_PATH $TOP/$NORMAL_PULL_PATH | tee -a $MTEMP
+
+
+            if [ $SYM_PULL == true ];then
+                echo "**** Symbols Pull from Server ****"
+                NORMAL_PULL_PATH=$NORMAL_PULL_PATH"symbols"
+                if [ ! -d $TOP/$NORMAL_PULL_PATH ]; then
+                    mkdir -p $TOP/$NORMAL_PULL_PATH
+                fi
+                echo "Downloading $SERVER_ADDR:$SERVER_PATH/$TW/$NORMAL_PULL_PATH folder from Server "
+                rsync $NORMAL_PARAM_PULL --info=progress2 $NORMAL_DELETE $SERVER_ADDR:$SERVER_PATH/$TW/$NORMAL_PULL_PATH $TOP/$NORMAL_PULL_PATH| tee -a $MTEMP
+            fi
+
+            NORMAL_PULL_PATH="out/host/linux-x86/bin/"
+            if [ ! -d $TOP/$NORMAL_PULL_PATH ]; then
+                mkdir -p $TOP/$NORMAL_PULL_PATH
+            fi
+            echo "Downloading $SERVER_ADDR:$SERVER_PATH/$TW/$NORMAL_PULL_PATH folder from Server "
+            rsync "-dptgoDh" -L --info=progress2 $NORMAL_DELETE $SERVER_ADDR:$SERVER_PATH/$TW/$NORMAL_PULL_PATH $TOP/$NORMAL_PULL_PATH | tee -a $MTEMP
+        fi
+        PULL_END=$(date +%s.%N)
+        PULL_TIME=$(echo "$PULL_END - $PULL_START" | bc)
+        PULL_TIME=$(printf '%.2f' $PULL_TIME)
+        PULL_DATA=$(data_calc)
+        PULL_DATA=$(printf '%.2f' $PULL_DATA)
+        #echo "PULL DATA $PULL_DATA GB, PULL TIME $PULL_TIME"
+        >$MTEMP
+}
+
+build(){
+        local RET
+        if [ ! "$TARGET_BUILD_TYPE" ] || [ ! "$TARGET_BUILD_VARIANT" ] || [ ! "$TARGET_PRODUCT" ] ; then
+            echo "Couldn't find build environments. Setup Shell and Retry." >&2
+            exit
+        fi
+        if [ ! "$PDK_FUSION_PLATFORM_ZIP" ];then
+            PDK="NULL";
+        else
+            PDK=$PDK_FUSION_PLATFORM_ZIP;
+        fi
+
+        local _cmdline="$(cmdline_base_setenv)"
+        _cmdline+="echo \"**** Starting build with mp "$@" ****\"; mp $@"
+        if [ $LOC_SYNC == true ];then
+            push
+        fi
+        data=$(echo $PUSH_DATA'>'"0.1" | bc -l)
+        if [ "$data" -gt "0" ] || [ ! -f $TOP/out ] ; then
+            meter_on_server;
+        fi
+        BUILD_START=$(date +%s.%N);
+        ssh -t $SERVER_ADDR "$_cmdline"
+        RET=$?
+        BUILD_END=$(date +%s.%N);
+        if [ $RET -eq 0 ] ; then
+            if [ $SERV_SYNC == true ] ; then pull;else echo "No server sync enabled"; fi
+        fi
+        BUILD_TIME=$(echo "$BUILD_END - $BUILD_START" | bc)
+        BUILD_TIME=$(printf '%.2f' $BUILD_TIME)
+        #echo "Build time $BUILD_TIME"
+}
+
+cmd(){
+        local RET
+        if [ ! "$TARGET_BUILD_TYPE" ] || [ ! "$TARGET_BUILD_VARIANT" ] || [ ! "$TARGET_PRODUCT" ] ; then
+            echo "Couldn't find build environments. Setup Shell and Retry." >&2
+            exit
+        fi
+        if [ ! "$PDK_FUSION_PLATFORM_ZIP" ];then
+            PDK="NULL";
+        else
+            PDK=$PDK_FUSION_PLATFORM_ZIP;
+        fi
+
+        local _cmdline="$(cmdline_base_setenv)"
+        _cmdline+="echo \"**** Running command $* on server ****\";"
+        _cmdline+="$@;"
+        if [ $LOC_SYNC == true ];then
+            push
+        fi
+        data=$(echo $PUSH_DATA'>'"0.1" | bc -l)
+        if [ "$data" -gt "0" ] || [ ! -d $TOP/out ] ; then
+            echo "Data sent to server $data GB"
+            meter_on_server;
+        fi
+        BUILD_START=$(date +%s.%N);
+        #meter_on_server;
+        ssh -t $SERVER_ADDR "$_cmdline"
+        RET=$?
+        BUILD_END=$(date +%s.%N);
+        if [ $RET -eq 0 ] ; then
+            if [ $SERV_SYNC == true ] ; then pull;else echo "No server sync enabled"; fi
+        fi
+        BUILD_TIME=$(echo "$BUILD_END - $BUILD_START" | bc)
+        BUILD_TIME=$(printf '%.2f' $BUILD_TIME)
+        #echo "Build time $BUILD_TIME"
+}
+
+server_load(){
+        local FTEXT='load average:'
+        local cpus="$(ssh $SERVER_ADDR grep -c processor /proc/cpuinfo)"
+        local cent=100
+        #local loadstr="ssh $SERVER_ADDR uptime | awk -F \"$FTEXT\" \
+        #'{ print \$2 }' | cut -d\" \" -f 2 | sed 's/ //g' | sed 's/,//g'"
+        local loadstr="ssh $SERVER_ADDR uptime | awk -F \"$FTEXT\" '{ print \$2 }' "
+        load="";
+        #ssh $SERVER_ADDR uptime
+        op=$($loadstr)
+        IFS="," read -ra LOADVAL <<< "$op"
+        for avgload in "${LOADVAL[@]}";do
+         centload=$(expr $avgload*$cent | bc)
+         oload=$(expr $centload/$cpus | bc)
+         load=${load}" "${oload}
+        done
+        echo $load
+}
+
+# Check the last 1min load on server, if it is under heavy load,
+# wait till load is below 70%
+# load = ( last 1min load )*100/numcpus
+# Load is 100% when all cores are used.
+meter_on_server(){
+        local FTEXT='load average:'
+        local cpus="$(ssh $SERVER_ADDR grep -c processor /proc/cpuinfo)"
+        local cent=100
+        local free=70
+        local loadstr="ssh $SERVER_ADDR uptime | awk -F \"$FTEXT\" \
+        '{ print \$2 }' | cut -d\" \" -f 2 | sed 's/ //g' | sed 's/,//g'"
+
+        #ssh $SERVER_ADDR uptime
+        avgload=$($loadstr)
+        #echo "avgload=$avgload"
+        avgload=$(expr $avgload*$cent | bc)
+        #echo "avgload=$avgload"
+        load=$(expr $avgload/$cpus| bc)
+        echo "Load on $SERVER_ADDR is $load%"
+        while [ $load -gt $free ]
+        do
+            echo -e "\e[31mMeter ON! Server is under heavy load. Retrying in few seconds! \e[0m"
+            sleep $[ ($RANDOM % 15) + 1 ]s
+            avgload=$($loadstr);
+            avgload=$(expr $avgload*$cent | bc)
+            #echo "avgload=$avgload"
+            load=$(expr $avgload/$cpus | bc)
+            echo "Load on $SERVER_ADDR is $load%"
+            #ssh $SERVER_ADDR uptime
+            #echo "Load on $SERVER_ADDR is $load%"
+        done
+}
+
+track(){
+    END=$(date +%s.%N)
+    LOAD_NEW=$(server_load)
+    TOTAL_TIME=$(echo "$END - $START" | bc)
+    TOTAL_TIME=$(printf '%.2f' $TOTAL_TIME)
+    IP="$(ifconfig | /bin/grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | /bin/grep -Eo '([0-9]*\.){3}[0-9]*' | /bin/grep -v '127.0.0.1'| head -n 1)"
+    PSTDATE="$(TZ="America/Los_Angeles" date +%D)"
+    PSTTIME="$(TZ="America/Los_Angeles" date +%T)"
+    #echo "USER $USER IP $IP"
+    #echo "Command $COMM"
+    #echo "PUSH DATA $PUSH_DATA GB, PUSH TIME $PUSH_TIME"
+    #echo "PULL DATA $PULL_DATA GB, PULL TIME $PULL_TIME"
+    #echo "Build time $BUILD_TIME"
+    #echo "Total time $TOTAL_TIME"
+    curl --data-urlencode "s=$PSTDATE,$PSTTIME,$USER,$IP,$SERVER_ADDR,$COMM,$PUSH_TIME,$PUSH_DATA,$BUILD_TIME,$PULL_TIME,$PULL_DATA,$TOTAL_TIME,$LOAD_OLD,$LOAD_NEW" http://gsarode-devteg/myrsync_data.php
+    exit
+}
+
+ctrl_c(){
+    echo -en "** Exiting **"
+    track
+}
+
+update_check;
+quotacheck;
+MTEMP="`mktemp -q "mRcXXXXXXXXXX" --tmpdir=/tmp`"
+START=$(date +%s.%N)
+BUILD_TIME=0
+PUSH_TIME=0
+PULL_TIME=0
+PUSH_DATA=0
+PULL_DATA=0
+END=0
+
+NORMAL_PUSH_EXCLUDE="--exclude="/out" "
+NORMAL_PULL_PATH="out/"
+NORMAL_PARAM_PUSH="-ahz"
+NORMAL_PARAM_PULL="-ah"
+PARTIAL_PULL=true
+MM_PATH=""
+SYM_PULL=false
+NORMAL_DELETE="--delete"
+SERV_SYNC=true
+LOC_SYNC=true
+COMM="$0 $*"
+#echo $@
+while getopts ":fhlndsy" opt; do
+    case $opt in
+    f)
+        echo "Force Update the tree."
+        NORMAL_PUSH_EXCLUDE=""
+        NORMAL_PULL_PATH=""
+    ;;
+    d)
+        echo "Full out Download,very slow. "
+        PARTIAL_PULL=false
+    ;;
+    y)
+        echo "Pulling $OUT without subdirectories and pulling $OUT/symbols"
+        PARTIAL_PULL=true
+        SYM_PULL=true
+    ;;
+    s)
+        echo "No server sync enabled"
+        SERV_SYNC=false
+    ;;
+    l)
+        echo "No local sync enabled"
+        LOC_SYNC=false
+    ;;
+    n)
+        echo "No Delete on local machine enabled"
+        NORMAL_DELETE=""
+    ;;
+    h)
+        echo "Showing help."
+        helper;
+        exit
+    ;;
+    esac
+done
+shift $((OPTIND-1))
+#echo $@
+
+if [ ! "$TOP" ]; then
+    echo "Couldn't find \$TOP. Set TOP and retry." >&2
+    exit
+fi
+if [ ! "$USER" ]; then
+    echo "Couldn't find \$USER. Set USER and retry." >&2
+    exit
+fi
+if [ ! "$SERVER_ADDR" ]; then
+    echo "Couldn't find \$SERVER_ADDR. Set SERVER_ADDR and retry." >&2
+    exit
+fi
+if [ ! "$SERVER_PATH" ]; then
+    echo "Couldn't find \$SERVER_PATH. Set SERVER_PATH and retry." >&2
+    exit
+fi
+
+LOAD_OLD=$(server_load)
+echo -e "\e[33mLoad on $SERVER_ADDR in % from last 1min, 5min and 15min is $LOAD_OLD respectively\e[0m"
+
+TW=`basename $TOP`
+if [ ! "$1" ];then
+    helper;
+elif [ $1 == "push" ];then
+    push;
+elif [ $1 == "pull" ];then
+    pull;
+elif [ $1 == "build" ];then
+    shift;
+    build $@;
+elif [ $1 == "cmd" ];then
+    shift ;
+    cmd $@;
+elif [ $1 == "buildclean" ];then
+    shift ;
+    meter_on_server;
+    cmd "mp clean ; mp ";
+elif [ $1 == "mmp" ];then
+    shift ;
+    mmp $@;
+elif [ $1 == "update" ];then
+    shift ;
+    force_update;
+else
+    helper;
+fi
+track

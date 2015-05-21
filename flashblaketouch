@@ -1,0 +1,10 @@
+#!/bin/bash
+
+adb root && sleep 2 && adb remount &&
+find -iname "touchpad_fw.bin" | xargs -I xxx adb push xxx /data/ &&
+find -iname "touchbutton_fw.bin" | xargs -I xxx adb push xxx /data/ &&
+adb shell lota -j /data/touchpad_fw.bin -d &&
+adb shell lota -k /data/touchbutton_fw.bin -d &&
+adb shell blake ota_apply_immediate_tp &&
+adb shell blake ota_apply_immediate_tb &&
+adb shell blake reset

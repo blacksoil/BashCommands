@@ -1,0 +1,6 @@
+#! /bin/bash
+
+adb wait-for-device root && 
+sleep 1 && 
+adb wait-for-device remount && 
+adb wait-for-device sync

@@ -1,0 +1,6 @@
+#!/bin/bash
+ADB=/home/aharijanto/droid/rel-20/out/host/linux-x86/bin/adb
+
+#$ADB logcat | grep -i -e blakepairmanager
+adb logcat -v time | grep -i -e blakepairmanager
+

@@ -1,0 +1,4 @@
+#! /bin/bash
+
+echo "Num args: $#"
+echo "Test: `$#`"

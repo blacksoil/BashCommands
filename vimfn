@@ -1,0 +1,11 @@
+#! /bin/bash
+
+last=`find -iname "$@"`
+if [ "$last" != "" ]
+then
+    vim $last;
+else
+    echo "$@ is not found!";
+fi
+
+

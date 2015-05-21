@@ -1,0 +1,5 @@
+#!/bin/bash
+ADB=/home/aharijanto/droid/rel-20/out/host/linux-x86/bin/adb
+
+$ADB $@
+

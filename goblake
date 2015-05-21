@@ -1,0 +1,199 @@
+#! /bin/bash
+
+function adbrr()
+{
+    adb root && sleep 1 && adb wait-for-device && adb remount
+}
+
+function updateSystemUI()
+{
+    adb push $TOP/out/target/product/roth/system/priv-app/SystemUI.apk /system/priv-app/
+#    adb push $TOP/out/target/product/ardbeg/system/framework/android.policy.jar /system/framework/ &&
+#    adb push $TOP/out/target/product/ardbeg/system/framework/services.jar /system/framework/ &&
+#    adb push $TOP/out/target/product/ardbeg/system/framework/framework2.jar /system/framework &&
+#    adb push $TOP/out/target/product/ardbeg/system/framework/framework.jar /system/framework &&
+#    adb reboot
+    adb shell stop &&
+    adb shell start
+}
+
+function logBlakeUI()
+{
+    adb logcat | grep -i -e blakesystemui
+}
+
+function logBlake()
+{
+    adb logcat -v time | grep -i -e blakepairmanager -e blakemanagerbinder -e blakemanager -e blakesystemui -e blakepowermenu -e blakepairing -e blakeaudiomanager
+}
+
+
+function logBlakeAudio()
+{
+
+    adb logcat -v time | grep -i blakeaudiomanager
+}
+
+function logBlakePairMgr()
+{
+
+    adb logcat -v time | grep -i blakepairmanager
+}
+
+
+function goblakeapp()
+{
+	if [[ -n "$TOP" ]]
+	   then  root=$TOP;
+	   else root="/home/aharijanto/droid/rel-st8-r1"
+	fi
+	cd "$root/vendor/nvidia/tegra/apps/blakeapps"
+}
+
+function buildSystemUI()
+{
+    curpath="$PWD"
+    cd $TOP/frameworks/base
+    mmp
+    cd $TOP/frameworks/base/packages/SystemUI
+    mmp
+    cd $TOP/frameworks/base/policy
+    mmp
+    cd $curpath
+}
+
+function buildblakeapp()
+{
+   goblakeapp
+   if [[ "$#" -eq 0 ]]
+   then mm
+   else mmp -B
+   fi
+
+   cd -
+}
+
+function goblake()
+{
+	if [[ -n "$TOP" ]]
+	   then  root=$TOP;
+	   else root="/home/aharijanto/droid/rel-st8-r1"
+	fi
+
+	cd "$root/vendor/nvidia/tegra/shieldtech/apps/Blake"
+}
+
+function buildblakeservice()
+{
+   goblakeservice
+   if [[ "$#" -eq 0 ]]
+   then mm
+   else mmp -B
+   fi
+
+   cd -
+}
+
+function buildblake()
+{
+    buildblakeapp
+    buildblakeservice
+}
+
+
+
+function updateblake()
+{
+    adb root && sleep 2 && adb remount &&
+    #adb push $OUT/system/framework/com.nvidia.blakemanager.jar
+    echo "Updating NvBlakeManager" &&
+    adb push $OUT/./system/app/NvBlakeManager.apk /system/app/
+    echo "Updating BlakeController2" &&
+    adb push $OUT/./system/app/BlakeController2.apk /system/app
+    echo "Updating BlakePairing" &&
+    adb push $OUT/./system/app/BlakePairing.apk  /system/app &&
+    echo "Updating libs" &&
+    adb push $OUT/./system/vendor/lib/hw/blake.tegra.so /system/vendor/lib/hw/
+    adb push $OUT/./system/vendor/lib/libblake_jni.so /system/vendor/lib/
+    adb push $OUT/./system/lib/libblake_jni.so /system/lib/
+    adb push $OUT/./out/target/product/ardbeg/system/vendor/lib/libblake_jni.so /system/vendor/lib/
+    adb reboot
+
+    if [[ "$#" -eq 0 ]]
+    then echo "Done!"
+    else adb reboot && echo "Rebooting... Done!"
+    fi
+   
+}
+
+function updateblaker()
+{
+    adb root && sleep 2 && adb remount &&
+    #adb push $OUT/system/framework/com.nvidia.blakemanager.jar
+    adb push $OUT/./system/app/NvBlakeManager.apk /system/app/ &&
+    #adb push $OUT/./system/app/BlakeController2.apk /system/app &&
+    adb push $OUT/./system/app/BlakePairing.apk  /system/app &&
+    adb push $OUT/./system/vendor/lib/hw/blake.tegra.so /system/vendor/lib/hw/
+    adb push $OUT/./system/vendor/lib/libblake_jni.so /system/vendor/lib/
+    adb reboot
+}
+
+function updateSystemUi()
+{
+    echo "nothing"
+}
+
+function updatepolicyMgr()
+{
+    echo "nothing"
+}
+
+function flashtn8_a03()
+{
+sudo /home/aharijanto/droid/rel-20/out/host/linux-x86/bin/nvflash --bct flash_e1761_2gb_924.cfg --setbct --odmdata 0x49c008 --configfile tn8_flash.cfg --dtbfile tegra124-tn8-p1761-1270-a03-battery.dtb --create --bl bootloader.bin --wait -s 0x1f --nct "/home/aharijanto/droid/rel-20/out/target/product/ardbeg/.nvflash_nctbin.txt" --odm limitedpowermode --go
+}
+
+function kill_blakeservice()
+{
+adb shell ps | grep -i blakemanager | cut -d " " -f 5 | xargs adb shell kill -9
+}
+
+function adbl()
+{
+    adb logcat -v threadtime $@
+}
+
+function ait()
+{
+    adb shell input text $@
+}
+
+function ai()
+{
+    adb logcat -v time | grep -i -e $@
+}
+
+function blake_pushdbl() {
+    adb push $TOP/out/target/product/t210/symbols/system/vendor/lib64/libblake_jni.so /system/vendor/lib64/
+    adb push $TOP/out/target/product/t210/symbols/system/vendor/lib64/hw/blake.tegra.so /system/vendor/lib64/hw/
+}
+
+function flash_fastboot() {
+    fastboot flash system system.img &&
+    fastboot flash boot boot.img &&
+    fastboot erase userdata &&
+    fastboot reboot
+}
+
+function pushblakesymbols() {
+    adb root && adb wait-for-device && adb remount &&
+    adb push $TOP/out/target/product/t210/symbols/system/vendor/lib64/hw/blake.tegra.so /system/vendor/lib64/hw/ &&
+    adb push $TOP/out/target/product/t210/symbols/system/vendor/lib64/libblake_jni.so /system/vendor/lib64/ &&
+    adb reboot
+}
+
+function mountservertrees() {
+    sudo sshfs aharijanto@android-build-05:/home/aharijanto/droid/rel-roth rel-roth &&
+    sudo sshfs aharijanto@android-build-05:/home/aharijanto/droid/rel-22-new rel-22-new &&
+    sudo sshfs aharijanto@android-build-05:/home/aharijanto/droid/rel-23 rel-23
+}

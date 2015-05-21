@@ -1,0 +1,43 @@
+#!/bin/bash
+#set -o nounset
+#set -o errexit
+rm -f /tmp/build.tgz
+ 
+file="buildbot.txt"
+ 
+if [ -f "buildbrain.txt" ]
+then
+    file="buildbrain.txt"
+fi
+ 
+flavor=`cat $file | head -n1 | grep debug | perl -pe 's![^\_]+_[^\_]+_[^\_]+_[^\_]+_[^\_]+_[^\_]+_([^\_]+)!$1!g'`
+platform=`cat $file | head -n1 | perl -pe 's![^\_]+_[^\_]+_([^\_]+)_[^\_]+_[^\_]+_[^\_]+_[^\_]+!$1!g'`
+ 
+binarylocation=out/$flavor/target/product/$platform
+ 
+if [ -f $file ]
+then
+    echo BB build
+    pushd $binarylocation
+else
+    echo "local build"
+    _flash | tail -n 1 > nvflashcmd.txt
+    pushd $OUT
+fi
+ 
+cp ../../../../out/host/linux-x86/bin/nvflash ./
+cp ../../../../nvflashcmd.txt ./
+ 
+if [ -f ./obj/ETC/fuse_bypass.txt_intermediates/fuse_bypass.txt ]
+then
+    cp ./obj/ETC/fuse_bypass.txt_intermediates/fuse_bypass.txt ./
+fi
+ 
+filelist=`find . -maxdepth 1 -type f`
+filelist="$filelist obj/KERNEL/vmlinux obj/KERNEL/System.map obj/EXECUTABLES/bootloader_intermediates/bootloader.map obj/EXECUTABLES/bootloader_intermediates/bootloader.elf"
+ 
+rm -f build.tgz
+tar zcf build.tgz $filelist
+mv build.tgz /tmp/build.tgz
+rm nvflashcmd.txt nvflash
+popd

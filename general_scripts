@@ -1,0 +1,9 @@
+#! /bin/bash
+
+function g()
+{
+    if [[ "$#" -eq 1 ]]
+    then `grep -ir $1 *`
+    else echo "error"; exit;
+    fi
+}

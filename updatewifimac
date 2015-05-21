@@ -1,0 +1,31 @@
+#! /bin/bash
+
+function updateMac() {
+    echo "Getting root and remount..."
+    adb root && sleep 2 && adb remount &&
+    echo "Updating mac address..." &&
+    adb shell "umount /mnt/factory" &&
+    adb shell "mount -t ext4 -o rw /dev/block/platform/sdhci-tegra.3/by-name/FCT /mnt/factory" &&
+    adb shell "mkdir /mnt/factory/wifi"  ||
+    adb shell "chmod 755 /mnt/factory/wifi" &&
+    adb shell "echo "$1" > /mnt/factory/wifi/wifi_mac.txt" &&
+    adb shell "chmod 644 /mnt/factory/wifi/wifi_mac.txt" &&
+    adb reboot &&
+    echo "Done! Device is rebooted!"
+    
+}
+
+if [ "$#" -eq 1 ]
+then
+    updateMac $1
+else
+    DEFAULT_MAC="30:85:a9:9a:7e:a7"
+    echo "Usage: updatewifimac [mac address]"
+    echo "Update to $DEFAULT_MAC? [Y/N]"
+    read yn
+    if [ "$yn" = "y" ]
+    then
+        updateMac $DEFAULT_MAC
+    fi
+
+fi

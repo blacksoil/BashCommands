@@ -1,3 +1,3 @@
 #! /bin/bash
 
-grep -r "$@" *
+grep -n --color -r "$@" *

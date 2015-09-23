@@ -1,0 +1,8 @@
+#! /bin/bash
+
+adb reboot bootloader &&
+sleep 3 &&
+sudo `which fastboot` flash boot $OUT/boot.img &&
+sleep 3 &&
+sudo `which fastboot` reboot
+

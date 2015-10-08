@@ -158,7 +158,7 @@ function kill_blakeservice()
 adb shell ps | grep -i blakemanager | cut -d " " -f 5 | xargs adb shell kill -9
 }
 
-function adbl()
+function al()
 {
     adb logcat -v threadtime $@
 }
@@ -168,10 +168,16 @@ function ait()
     adb shell input text $@
 }
 
-function ai()
+function alg()
 {
     adb logcat -v time | grep -i -e $@
 }
+
+function alf()
+{
+   adb logcat -v time | grep -i fatal -a20
+}
+
 
 function blake_pushdbl() {
     adb push $TOP/out/target/product/t210/symbols/system/vendor/lib64/libblake_jni.so /system/vendor/lib64/

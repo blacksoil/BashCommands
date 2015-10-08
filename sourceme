@@ -1,4 +1,4 @@
-alias adb_rrsr='adb root && adb wait-for-device remount && adb wait-for-device sync && adb wait-for-device reboot'
+alias adb_rrsr='adb root && sleep 2 && adb wait-for-device remount && adb wait-for-device sync && adb wait-for-device reboot'
 alias confenv='export TOP=$(pwd);. build/envsetup.sh;setpaths'
 alias repols='repo forall -p -c ~/bin/list-changes.sh'
 alias unlag='exec ionice -c 3 bash -l'

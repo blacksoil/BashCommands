@@ -1,0 +1,11 @@
+#! /bin/bash
+
+if [ $# -eq 1 ]
+then
+   netstat -atun | grep ":$1"
+elif [ $# -eq 0 ]
+then
+   netstat -atun
+else
+   echo "Usage: $0 [port]"
+fi

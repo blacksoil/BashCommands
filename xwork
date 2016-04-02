@@ -1,0 +1,19 @@
+#! /bin/bash
+
+function reload_backend() {
+    (fn "*.pyc" | xargs rm) || uwsgi --ini ../shared/xwork-api.ini
+}
+
+function reload_frontend() {
+    gulp && sudo service nginx restart
+}
+
+function uwsgi_xwork() {
+    source /home/aharijanto/Desktop/XWORK_CODE/backend/venv2/bin/activate &&
+    cd /home/aharijanto/Desktop/XWORK_CODE/backend/20151213234845 &&
+    uwsgi --ini ../shared/xwork-api.ini
+}
+
+function croot() {
+    cd /home/aharijanto/Desktop/XWORK_CODE
+}

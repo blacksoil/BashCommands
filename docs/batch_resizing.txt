@@ -1,0 +1,5 @@
+# Find all jpg files on this folder, resize it to be 33%, and output to resized/
+find -maxdepth 1 -iname "*.jpg" | xargs -Ixxx convert -resize 33% xxx resized/xxx
+
+# Then convert everything to a single pdf
+convert ./resized/*.jpg output.pdf

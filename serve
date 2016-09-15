@@ -1,0 +1,10 @@
+#! /bin/bash
+if [ $# -eq 1 ]
+then
+	php -S 0.0.0.0:$1;
+elif [ $# -eq 0 ]
+then
+	php -S 0.0.0.0:3000;
+else
+	echo "Usage: $0 [port=3000]";
+fi

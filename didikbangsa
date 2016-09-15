@@ -1,0 +1,9 @@
+
+
+function dbroot() {
+  cd ~/Desktop/IndonesiaCerdas
+}
+
+function dbbroot() {
+  cd ~/Desktop/IndonesiaCerdas-backend
+}

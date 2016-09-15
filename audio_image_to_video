@@ -1,0 +1,1 @@
+avconv -loop 1 -i ~/Downloads/discernment.jpg -i DiscernmentFromKat_modded.mp3 -shortest -acodec copy -f mov DiscernmentFromKat_video.mov

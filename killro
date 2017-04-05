@@ -1,0 +1,1 @@
+sudo kill -9 `ps aux | grep Rage | head -1 | tr -s ' '   | cut -d ' ' -f 2`

@@ -1,0 +1,1 @@
+rsync -rz /home/aharijanto/Programming/nodejs/bdm-backend/* aharijanto@188.166.228.12:/home/aharijanto/Programming/nodejs/blacksoildevicemanager/

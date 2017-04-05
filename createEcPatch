@@ -1,0 +1,9 @@
+#!/bin/bash
+echo "Creating Patch...."
+git diff > ~/tmp/patch && scp /home/aharijanto/tmp/patch aharijanto@nusantara-cloud.com:/home/aharijanto/tmp/patch
+if [ $? -eq 0 ]
+then
+	echo "Done!"
+else
+	echo "Error!"
+fi

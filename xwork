@@ -15,5 +15,5 @@ function uwsgi_xwork() {
 }
 
 function croot() {
-    cd /home/aharijanto/Desktop/XWORK_CODE
+    cd /home/aharijanto/Programming/nodejs/easycommerce-backend
 }

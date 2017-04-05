@@ -1,0 +1,10 @@
+#!/bin/bash
+echo "Applying patch...."
+git reset --hard HEAD  && git apply ~/tmp/patch && sudo node app.js
+
+if [ $? -eq 0 ]
+then
+	echo "Success!"
+else
+	echo "Failed!"
+fi

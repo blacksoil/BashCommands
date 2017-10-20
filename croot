@@ -1,0 +1,22 @@
+#! /bin/bash
+
+
+case $@ in
+  ubk|ubksystem)
+    path="/home/aharijanto/Programming/nodejs/ubksystem"
+    ;;
+  hedona)
+    path="/home/aharijanto/Programming/nodejs/easycommerce-backend/dropbox/statichost/hedona"
+    ;;
+  hedona-react)
+    path="/home/aharijanto/Programming/websites/HedonaReact"
+    ;;
+  pd)
+    path="/home/aharijanto/Programming/android/PaintingDemo"
+    ;;
+  *)
+    path="/home/aharijanto/Programming/nodejs/ncloud-server"
+esac
+
+echo $path
+cd $path

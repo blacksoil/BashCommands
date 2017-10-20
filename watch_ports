@@ -2,10 +2,10 @@
 
 if [ $# -eq 1 ]
 then
-   netstat -atun | grep ":$1"
+   sudo netstat -atunlp | grep "\:$1"
 elif [ $# -eq 0 ]
 then
-   netstat -atun
+   sudo netstat -atunlp
 else
    echo "Usage: $0 [port]"
 fi

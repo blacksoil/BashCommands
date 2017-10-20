@@ -1,0 +1,30 @@
+#! /bin/bash
+
+#function croot() {
+#    cd /home/aharijanto/Programming/nodejs/easycommerce-backend
+#}
+
+function lproot() {
+    cd /home/aharijanto/Programming/nodejs/easycommerce-backend/dropbox/statichost/landingpage
+}
+
+function ubkdb() {
+  mysql -u root -p ubksystem
+}
+
+function mine1() {
+  ssh prospector@nusantara-cloud.com -p 3559
+}
+
+function mine2() {
+  ssh prospector@nusantara-cloud.com -p 4000 
+}
+
+function ubk() {
+  #ssh ubkadmin@nusantara-cloud.com -p 3401
+  ssh ubkadmin@ubksystem.ddns.net -p 8880
+}
+
+function setHDMI() {
+  xrandr --output HDMI2 --left-of eDP1
+}

@@ -1,0 +1,4 @@
+#! /bin/bash
+
+ssh aharijanto@nusantara-cloud.com -p8288 "mysqldump -uroot -p filos_edu > ~/tmp/filosedu.sql" &&
+scp -P8288 aharijanto@nusantara-cloud.com:~/tmp/filosedu.sql /home/aharijanto/tmp/filosedu.sql 

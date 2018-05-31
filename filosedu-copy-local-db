@@ -1,0 +1,3 @@
+#! /bin/bash
+
+mysqldump -uroot app_filosedu > ~/tmp/filosedu.sql && scp -P8288  /home/aharijanto/tmp/filosedu.sql aharijanto@nusantara-cloud.com:~/tmp/filosedu.sql 

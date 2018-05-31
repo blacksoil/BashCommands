@@ -26,5 +26,5 @@ function ubk() {
 }
 
 function setHDMI() {
-  xrandr --output HDMI2 --left-of eDP1
+  xrandr --output HDMI-2 --left-of eDP-1
 }

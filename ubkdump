@@ -1,0 +1,1 @@
+mysqldump --complete-insert --no-create-info -uroot -ppassword -h127.0.0.1 -P3307 ubksystem > ubksystem.sql

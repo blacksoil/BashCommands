@@ -1,0 +1,3 @@
+#! /bin/bash
+
+ssh -NnD 8081 aharijanto@log.nusantara-cloud.com -p8288

@@ -1,0 +1,16 @@
+TARGETDEV=$1
+TARGETDIR="/mnt/"
+
+mount $TARGETDEV $TARGETDIR
+mount -t proc /proc $TARGETDIR/proc
+mount --rbind /sys $TARGETDIR/sys
+mount --rbind /dev $TARGETDIR/dev
+
+cp /etc/hosts $TARGETDIR/etc
+cp /etc/resolv.conf $TARGETDIR/etc
+chroot $TARGETDIR rm /etc/mtab 2> /dev/null
+chroot $TARGETDIR ln -s /proc/mounts /etc/mtab
+
+chroot $TARGETDIR
+
+

@@ -1,0 +1,48 @@
+#! /bin/bash
+
+
+if [ "intel" == $1 ] 
+then
+  echo "
+    Section \"Device\"
+      Identifier  \"Intel Graphics\"
+      Driver      \"intel\"
+    EndSection
+  " | sudo tee /etc/X11/xorg.conf
+
+  echo "
+    #! /bin/sh
+    # Xsetup - run as root before the login dialog appears
+
+    # Config below is for running NVIDIA GPU.
+    # Since we're using Intel GPU, we don't need it
+    # xrandr --setprovideroutputsource modesetting NVIDIA -0
+    # xrandr --auto
+  " | sudo tee /usr/share/sddm/scripts/Xsetup
+elif [ "nvidia" == $1 ]
+then
+  sudo echo "
+    Section \"Module\"
+        Load    \"modesetting\"
+    EndSection
+
+    Section \"Device\"
+        Identifier     \"nvidia\"
+        Driver         \"nvidia\"
+        BusID          \"4:0:0\"
+        Option         \"AllowEmptyInitialConfiguration\"
+    EndSection
+  " | sudo tee /etc/X11/xorg.conf 
+
+  echo "
+    #! /bin/sh
+    # Xsetup - run as root before the login dialog appears
+
+    # Config below is for running NVIDIA GPU.
+    xrandr --setprovideroutputsource modesetting NVIDIA-0
+    xrandr --auto
+  " | sudo tee /usr/share/sddm/scripts/Xsetup
+
+else
+  echo "Usage: $0 nvidia/intel"
+fi

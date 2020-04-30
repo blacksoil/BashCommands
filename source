@@ -28,3 +28,16 @@ function ubk() {
 function setHDMI() {
   xrandr --output HDMI-2 --left-of eDP-1
 }
+
+alias copy='xclip -selection clipboard'
+
+source ~/bin/sources/x1_libinput
+
+function filos-croot() {
+  cd /home/aharijanto/Programming/nodejs/ncloud-server/dropbox/dynamichost/app_filosedu
+}
+
+
+# WAR for latest version of tmuxinator
+# Problem is with ruby gem paths
+export GEM_PATH="$GEM_PATH:/usr/lib/ruby/gems/2.5.0"

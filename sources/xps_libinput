@@ -1,0 +1,13 @@
+# Dell XPS 13
+# Tap to click
+xinput set-prop "DLL0704:01 06CB:76AE Touchpad" "libinput Tapping Enabled" 1
+# Tap and drag
+ xinput set-prop "DLL0704:01 06CB:76AE Touchpad" "libinput Tapping Drag Enabled" 1
+
+# Acceleration speed
+xinput set-prop "DLL0704:01 06CB:76AE Touchpad" "libinput Accel Speed" 0.4
+
+# Non-natural scrolling
+xinput set-prop "DLL0704:01 06CB:76AE Touchpad"  "libinput Natural Scrolling Enabled" 0
+
+

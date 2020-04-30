@@ -1,0 +1,10 @@
+
+echo "Full battery design in mAh:"
+cat /sys/class/power_supply/BAT0/energy_full_design && cat /sys/class/power_supply/BAT1/energy_full_design
+
+echo "Full battery capacity in mAh:"
+cat /sys/class/power_supply/BAT0/energy_full && cat /sys/class/power_supply/BAT1/energy_full
+
+echo "Battery left in mAh:"
+cat /sys/class/power_supply/BAT0/energy_now && cat /sys/class/power_supply/BAT1/energy_now
+

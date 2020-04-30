@@ -1,0 +1,6 @@
+# /bin/bash
+
+sudo cpupower frequency-set -g performance
+sudo cpupower frequency-set -d 2500000
+sleep 2
+sudo cpupower frequency-info

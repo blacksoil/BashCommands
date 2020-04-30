@@ -1,0 +1,8 @@
+#! /bin/bash
+
+# Use this script as follow: backup_arch /dev/sda4 > ~/Backups/backup.img.gz 
+dd if=$1 conv=sync,noerror bs=64K| gzip -c
+
+# Restore as follow: gunzip -c ~/Backups/backup.img.gz || dd of=/dev/sda4 conv=sync,noerror bs=64K
+
+# More info: https://www.linuxweblog.com/dd-image

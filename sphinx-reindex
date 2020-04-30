@@ -1,0 +1,1 @@
+sudo systemctl stop sphinx.service && sudo indexer --all && sudo systemctl start sphinx.service

@@ -1,0 +1,14 @@
+# Libinput configuration
+# https://wiki.archlinux.org/index.php/Libinput
+# Tap to click
+xinput set-prop "SynPS/2 Synaptics TouchPad" "libinput Tapping Enabled" 1
+# Tap and drag
+ xinput set-prop "SynPS/2 Synaptics TouchPad" "libinput Tapping Drag Enabled" 1
+
+# Acceleration speed
+xinput set-prop "SynPS/2 Synaptics TouchPad" "libinput Accel Speed" 0.2
+
+# Non-natural scrolling
+xinput set-prop "SynPS/2 Synaptics TouchPad"  "libinput Natural Scrolling Enabled" 0
+
+

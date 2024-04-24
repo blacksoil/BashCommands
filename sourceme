@@ -2,3 +2,4 @@ alias adb_rrsr='adb root && sleep 2 && adb wait-for-device remount && adb wait-f
 alias confenv='export TOP=$(pwd);. build/envsetup.sh;setpaths'
 alias repols='repo forall -p -c ~/bin/list-changes.sh'
 alias unlag='exec ionice -c 3 bash -l'
+alias yakgpt='cd /Users/aharijanto/src/opensource/yakGPT && npm start'

@@ -1,1 +1,1 @@
-/home/aharijanto/Android/Sdk/platform-tools/adb
+./adb

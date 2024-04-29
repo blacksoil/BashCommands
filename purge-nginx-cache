@@ -1,0 +1,1 @@
+sudo rm -rf /var/cache/nginx/** && sudo service nginx restart
